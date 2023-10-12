@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 # load dataset into dataframe
-df = pd.read_excel('resources/Raisin_Dataset.xlsx')
+df = pd.read_excel('Raisin_Dataset.xlsx')
 
 #split data into feature columns and labels
 col_names = df.columns.tolist()
