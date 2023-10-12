@@ -9,15 +9,8 @@ from sklearn import metrics
 import matplotlib.pyplot as plt
 import numpy as np
 
-# Define your dataset or load it here (replace this with your actual data)
+# load dataset into dataframe
 df = pd.read_excel('resources/Raisin_Dataset.xlsx')
-
-# Define a function to calculate accuracy and display the confusion matrix
-def evaluate_classifier(classifier, X_test, y_test):
-    y_pred = classifier.predict(X_test)
-    accuracy = metrics.accuracy_score(y_test, y_pred)
-    cm = confusion_matrix(y_test, y_pred)
-    return accuracy, cm
 
 #split data into feature columns and labels
 col_names = df.columns.tolist()
@@ -26,53 +19,107 @@ feature_cols = col_names[:-1]
 X = df[feature_cols]
 y = df['Class']
 
-
 # Split dataset into training set and test set
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3) # 70% training and 30% test
 
-# Build and train the models
-rf_clf = RandomForestClassifier(n_estimators=101)
-lr_clf = LogisticRegression()
-svc_clf = SVC(kernel='rbf')
+st.title("r0874339 ML Task: Benchmarking 3 classification algorithms")
 
-rf_clf.fit(X_train, y_train)
-lr_clf.fit(X_train, y_train)
-svc_clf.fit(X_train, y_train)
+st.write("The dataset used for this task was the raisin dataset from the UCI datasets page")
 
-# Create a Streamlit app
-st.title("Classification Algorithms Dashboard")
+st.header("EDA")
+st.write("First lets make sure our dataset is structured properly by checking the first and last rows")
 
-# Buttons to evaluate and display models
-if st.button("Evaluate Random Forest"):
-    accuracy, cm = evaluate_classifier(rf_clf, X_test, y_test)
-    st.write(f"Random Forest Accuracy: {accuracy:.2f}")
-    st.write("Random Forest Confusion Matrix:")
-    st.pyplot(plt.figure(figsize=(6, 6)))
-    ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=np.unique(y)).plot()
+if st.button("View dataframe"):
+    st.write("Are there any null values in here?")
+    st.write(df.isnull().any().any())
+    st.write("Would you look at that, no null values. Awesome! Less work for me :)")
+    st.write("Looks like the structure is good as well, but there might be a problem! It seems like the data was entered in order of the raisins class. This might not be a problem but to be sure let's randomize the rows in our dataframe.")
+    st.write(df.head(5))
+    st.write(df.tail(5))
+    
+    
+if st.button("Randomize dataframe rows"):
+    # Randomize the rows
+    randomized_df = df.sample(frac=1, random_state=42)  # Set a specific seed for reproducibility (use any integer)
 
-if st.button("Evaluate Logistic Regression"):
-    accuracy, cm = evaluate_classifier(lr_clf, X_test, y_test)
-    st.write(f"Logistic Regression Accuracy: {accuracy:.2f}")
-    st.write("Logistic Regression Confusion Matrix:")
-    st.pyplot(plt.figure(figsize=(6, 6)))
-    ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=np.unique(y)).plot()
+    # Reset the index of the randomized DataFrame
+    randomized_df.reset_index(drop=True, inplace=True)
 
-if st.button("Evaluate Support Vector Classifier"):
-    accuracy, cm = evaluate_classifier(svc_clf, X_test, y_test)
-    st.write(f"SVC Accuracy: {accuracy:.2f}")
-    st.write("SVC Confusion Matrix:")
-    st.pyplot(plt.figure(figsize=(6, 6)))
-    ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=np.unique(y)).plot()
+    df = randomized_df
 
-# Button to list models by accuracy
-if st.button("List Models by Accuracy"):
-    accuracies = {
-        "Random Forest": metrics.accuracy_score(y_test, rf_clf.predict(X_test)),
-        "Logistic Regression": metrics.accuracy_score(y_test, lr_clf.predict(X_test)),
-        "Support Vector Classifier": metrics.accuracy_score(y_test, svc_clf.predict(X_test)),
-    }
-    sorted_models = sorted(accuracies.items(), key=lambda x: x[1], reverse=True)
-    st.write("Models Ranked by Accuracy:")
-    for model, accuracy in sorted_models:
-        st.write(f"{model}: {accuracy:.2f}")
+    st.write("I think that's better! Maybe? Why not try comparing the algorithms with both randomized and non randomized rows?")
+    st.write(df.head(5))
+    st.write(df.tail(5))    
+
+
+
+
+st.header("Determine hyperparameters for our algorithms")
+
+st.write("Input amount of bags for Random Forest")
+n_estimators_input = st.number_input("Enter n_estimators for the Random Forest algorithm(default = 101, min = 1, max = 500)", min_value=1, max_value=500, value=101)
+
+
+st.write("Hyperparameters for SVC")
+kernel_input = st.selectbox("Select Kernel", ["linear", "rbf", "poly", "sigmoid"])
+C_input = st.number_input("Enter C (Regularization Parameter)", min_value=0.001, max_value=100.0, value=1.0)
+
+
+if st.button("Compare Algorithms"):
+
+    #building the models
+    rf_clf = RandomForestClassifier(n_estimators=n_estimators_input)
+    lr_clf = LogisticRegression()
+    svc_clf = SVC(kernel=kernel_input, C = C_input)
+
+    #training the models
+    rf_clf = rf_clf.fit(X_train, y_train)
+    lr_clf = lr_clf.fit(X_train, y_train)
+    svc_clf = svc_clf.fit(X_train, y_train)
+
+    #making predictions
+    rf_pred = rf_clf.predict(X_test)
+    lr_pred = lr_clf.predict(X_test)
+    svc_pred = svc_clf.predict(X_test)
+
+
+    rf_acc = metrics.accuracy_score(y_test, rf_pred).round(2)
+    rf_cm = confusion_matrix(y_test, rf_pred)
+
+    lr_acc = metrics.accuracy_score(y_test, lr_pred).round(2)
+    lr_cm = confusion_matrix(y_test, lr_pred)
+
+    svc_acc = metrics.accuracy_score(y_test, svc_pred).round(2)
+    svc_cm = confusion_matrix(y_test, svc_pred)
+
+
+
+
+
+    st.write("Confusion Matrices and Accuracies:")
+    st.write("You can enlarge the plot by hovering over the image and clicking the enlarge button on the top right.")
+    # Create a single subplot for all three plots
+    fig, axs = plt.subplots(1, 3, figsize=(15, 3))  # 1 row, 3 columns for the plots
+
+    # Plot Random Forest Confusion Matrix
+    axs[0].set_title(f"Random Forest Accuracy: {rf_acc}")
+    axs[0].set_xlabel("Predicted")
+    axs[0].set_ylabel("True")
+    ConfusionMatrixDisplay(confusion_matrix=rf_cm, display_labels=np.unique(y)).plot(ax=axs[0])
+
+    # Plot Logistic Regression Confusion Matrix
+    axs[1].set_title(f"Logistic Regression Accuracy: {lr_acc}")
+    axs[1].set_xlabel("Predicted")
+    axs[1].set_ylabel("True")
+    ConfusionMatrixDisplay(confusion_matrix=lr_cm, display_labels=np.unique(y)).plot(ax=axs[1])
+
+    # Plot SVC Confusion Matrix
+    axs[2].set_title(f"SVC Accuracy: {svc_acc}")
+    axs[2].set_xlabel("Predicted")
+    axs[2].set_ylabel("True")
+    ConfusionMatrixDisplay(confusion_matrix=svc_cm, display_labels=np.unique(y)).plot(ax=axs[2])
+
+    # Display the entire subplot
+    st.pyplot(fig)
+
 
